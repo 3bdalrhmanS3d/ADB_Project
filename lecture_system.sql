@@ -113,3 +113,48 @@ BEGIN
     WHERE user_id = user_id;
 END$$
 DELIMITER ;
+
+-- 
+DELIMITER $$
+CREATE PROCEDURE AddQuestion( IN lecture_id INT, IN question_text TEXT, IN code_option TEXT ) 
+BEGIN
+    INSERT INTO questions (lecture_id, question_text, code_option)
+    VALUES (lecture_id, question_text, code_option);
+END $$
+DELIMITER ;
+
+-- 
+DELIMITER $$
+CREATE PROCEDURE GetQuestionsByLecture(IN lecture_id INT)
+BEGIN
+    SELECT * FROM questions WHERE lecture_id = lecture_id;
+END$$
+DELIMITER ;
+
+-- 
+
+DELIMITER $$
+CREATE PROCEDURE DeleteQuestion(IN question_id INT)
+BEGIN
+    DELETE FROM options WHERE question_id = question_id;
+    DELETE FROM questions WHERE question_id = question_id;
+END$$
+DELIMITER ;
+
+-- 
+
+DELIMITER $$
+CREATE PROCEDURE GetLectures()
+BEGIN
+    SELECT * FROM lectures;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE TRIGGER BeforeDeleteQuestion
+BEFORE DELETE ON questions
+FOR EACH ROW
+BEGIN
+    DELETE FROM options WHERE question_id = OLD.question_id;
+END$$
+DELIMITER ;

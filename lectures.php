@@ -1,3 +1,10 @@
+<?php
+session_start();
+include 'db.php';
+
+$isAdmin = isset($_SESSION['username']) && $_SESSION['username'] === 'fox76459@gmail.com';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,24 +74,27 @@
             text-decoration: underline;
         }
 
-        footer {
-            margin-top: 20px;
+        .action-buttons {
             text-align: center;
-            padding: 10px;
-            background-color: #f1f1f1;
+            margin-top: 20px;
         }
 
-        footer a {
+        .action-buttons a {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 30px;
+            background-color: #007bff;
+            color: #fff;
             text-decoration: none;
-            color: #007bff;
+            border-radius: 5px;
             font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
         }
 
-        footer a:hover {
-            text-decoration: underline;
+        .action-buttons a:hover {
+            background-color: #0056b3;
         }
-
-
     </style>
 </head>
 <body>
@@ -94,7 +104,6 @@
     <div class="container">
         <ul>
             <?php
-                include 'db.php';
                 $result = $conn->query("CALL AvailableLectures()");
                 while ($row = $result->fetch_assoc()) {
                     echo "<li><a href='questions.php?lecture_id=" . $row['lecture_id'] . "'>" . $row['lecture_name'] . "</a></li>";
@@ -103,9 +112,11 @@
         </ul>
     </div>
 
-    <a href="ConvertJsonToMyDB.php" class="upload-button">
-        Upload JSON to Database
-    </a>
+    <div class="action-buttons">
+        <?php if ($isAdmin): ?>
+            <a href="ConvertJsonToMyDB.php">Upload JSON to Database</a>
+            <a href="edit_question.php">Manage Questions</a>
+        <?php endif; ?>
+    </div>
 </body>
-
 </html>
