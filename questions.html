@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Questions</title>
+    <style>
+        .question {
+            background: #fff;
+            margin: 15px auto;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            width: 80%;
+        }
+
+        input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        label {
+            display: block;
+            margin: 5px 0;
+            font-size: 1em;
+        }
+
+        button {
+            margin-top: 20px;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Lecture Questions</h1>
+    <form action="submit_answers.php" method="POST">
+        <?php
+            include 'db.php';
+            $lecture_id = $_GET['lecture_id'];
+            $result = $conn->query("SELECT * FROM questions WHERE lecture_id = $lecture_id");
+            while ($row = $result->fetch_assoc()) {
+                echo "<div class='question'>";
+                echo "<p>" . $row['question_text'] . "</p>";
+
+                $options = $conn->query("SELECT * FROM options WHERE question_id = " . $row['question_id']);
+                while ($option = $options->fetch_assoc()) {
+                    echo "<label>";
+                    echo "<input type='radio' name='question_" . $row['question_id'] . "' value='" . $option['option_id'] . "'>";
+                    echo $option['option_text'];
+                    echo "</label><br>";
+                }
+                echo "</div>";
+            }
+        ?>
+        <button type="submit">Submit Answers</button>
+    </form>
+</body>
+</html>
