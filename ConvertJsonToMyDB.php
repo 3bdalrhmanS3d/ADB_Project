@@ -131,6 +131,7 @@ function displayLectureAndQuestions($lectureId) {
 
         <button type="submit" name="submit">Submit</button>
     </form>
+    <a href="lectures.php" style="display: inline-block; margin-top: 20px; padding: 10px 20px; border: 1px solid #007bff; border-radius: 4px; background-color: #f8f9fa; text-decoration: none; color: #007bff; transition: background-color 0.3s, color 0.3s;">Back to Home</a>
 
     <?php
     // Handle form submission

@@ -2,7 +2,7 @@
 session_start();
 include 'db.php';
 
-$isAdmin = isset($_SESSION['username']) && $_SESSION['username'] === 'fox76459@gmail.com';
+$isAdmin = isset($_SESSION['user_name']) && $_SESSION['user_name'] === 'fox76459@gmail.com';
 ?>
 
 <!DOCTYPE html>
@@ -116,6 +116,7 @@ $isAdmin = isset($_SESSION['username']) && $_SESSION['username'] === 'fox76459@g
         <?php if ($isAdmin): ?>
             <a href="ConvertJsonToMyDB.php">Upload JSON to Database</a>
             <a href="edit_question.php">Manage Questions</a>
+            <a href="view_users.php">View Users</a>
         <?php endif; ?>
     </div>
 </body>

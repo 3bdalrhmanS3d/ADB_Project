@@ -1,42 +1,62 @@
 <?php
+session_start();
 include 'db.php';
 
-if (isset($_POST['add_question'])) {
+if (!isset($_SESSION['user_name']) || $_SESSION['user_name'] !== 'fox76459@gmail.com') {
+    header("Location: register.html");
+    exit();
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'];
+    $question_id = $_POST['question_id'];
     $lecture_id = $_POST['lecture_id'];
     $question_text = $_POST['question_text'];
-    $code_option = !empty($_POST['code_option']) ? $_POST['code_option'] : null;
+    $code_option = $_POST['code_option'];
 
-    $stmt = $conn->prepare("CALL AddQuestion(?, ?, ?)");
-    $stmt->bind_param("iss", $lecture_id, $question_text, $code_option);
-    $stmt->execute();
-    header("Location: manage_questions.php?lecture_id=$lecture_id");
-    exit();
-}
+    if ($action === 'add') {
+        $stmt = $conn->prepare("CALL AddQuestion(?, ?, ?)");
+        $stmt->bind_param("iss", $lecture_id, $question_text, $code_option);
+        $stmt->execute();
 
-if (isset($_GET['delete_question_id'])) {
-    $question_id = $_GET['delete_question_id'];
-    $lecture_id = $_GET['lecture_id'];
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $question_id = $row['question_id'];
 
-    $stmt = $conn->prepare("CALL DeleteQuestion(?)");
-    $stmt->bind_param("i", $question_id);
-    $stmt->execute();
-    header("Location: manage_questions.php?lecture_id=$lecture_id");
-    exit();
-}
+        if (isset($_POST['options'])) {
+            foreach ($_POST['options'] as $index => $option_text) {
+                $is_correct = isset($_POST['is_correct'][$index]) ? 1 : 0;
+                $stmt = $conn->prepare("INSERT INTO options (question_id, option_text, is_correct) VALUES (?, ?, ?)");
+                $stmt->bind_param("isi", $question_id, $option_text, $is_correct);
+                $stmt->execute();
+            }
+        }
+    } elseif ($action === 'edit') {
+        $stmt = $conn->prepare("CALL EditQuestion(?, ?, ?)");
+        $stmt->bind_param("iss", $question_id, $question_text, $code_option);
+        $stmt->execute();
 
-$lectures_result = $conn->query("CALL AvailableLectures()");
+        $stmt = $conn->prepare("DELETE FROM options WHERE question_id = ?");
+        $stmt->bind_param("i", $question_id);
+        $stmt->execute();
 
-$questions = [];
-$selected_lecture_id = isset($_GET['lecture_id']) ? (int)$_GET['lecture_id'] : 0;
-if ($selected_lecture_id > 0) {
-    $stmt = $conn->prepare("CALL GetQuestionsByLecture(?)");
-    $stmt->bind_param("i", $selected_lecture_id);
-    $stmt->execute();
-    $questions_result = $stmt->get_result();
-    while ($row = $questions_result->fetch_assoc()) {
-        $questions[] = $row;
+        if (isset($_POST['options'])) {
+            foreach ($_POST['options'] as $index => $option_text) {
+                $is_correct = isset($_POST['is_correct'][$index]) ? 1 : 0;
+                $stmt = $conn->prepare("INSERT INTO options (question_id, option_text, is_correct) VALUES (?, ?, ?)");
+                $stmt->bind_param("isi", $question_id, $option_text, $is_correct);
+                $stmt->execute();
+            }
+        }
+    } elseif ($action === 'delete') {
+        $stmt = $conn->prepare("CALL DeleteQuestion(?)");
+        $stmt->bind_param("i", $question_id);
+        $stmt->execute();
+        echo "<script>alert('Question deleted successfully');</script>";
     }
 }
+
+$result = $conn->query("SELECT q.*, l.lecture_name FROM questions q JOIN lectures l ON q.lecture_id = l.lecture_id");
 ?>
 
 <!DOCTYPE html>
@@ -48,111 +68,185 @@ if ($selected_lecture_id > 0) {
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f9f9f9;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         h1 {
-            text-align: center;
+            color: #333;
         }
 
-        form, table {
-            margin: 20px auto;
+        form {
             width: 80%;
-            background: #fff;
+            background-color: #fff;
             padding: 20px;
+            margin: 20px 0;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        form label, form select, form textarea, form button {
+        label {
             display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="number"],
+        textarea,
+        button {
             width: 100%;
-            margin-bottom: 10px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
         }
 
         table {
+            width: 80%;
             border-collapse: collapse;
-            width: 100%;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
         }
 
-        table th, table td {
-            padding: 10px;
+        th,
+        td {
+            padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
 
-        button, a {
-            display: inline-block;
-            padding: 10px 15px;
-            background: #007bff;
+        th {
+            background-color: #007BFF;
             color: #fff;
-            border: none;
-            border-radius: 5px;
-            text-decoration: none;
-            text-align: center;
-            cursor: pointer;
+            font-weight: bold;
         }
 
-        button:hover, a:hover {
-            background: #0056b3;
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
         }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        form[style="display:inline;"] {
+            display: inline;
+        }
+
+        @media (max-width: 768px) {
+            form, table {
+                width: 100%;
+            }
+
+            th, td {
+                font-size: 14px;
+            }
+        }
+
     </style>
 </head>
 <body>
     <h1>Manage Questions</h1>
-
-    <!-- Form to add a question -->
     <form method="POST">
-        <label for="lecture_id">Select Lecture:</label>
-        <select name="lecture_id" id="lecture_id" required>
-            <option value="">-- Select Lecture --</option>
-            <?php while ($lecture = $lectures_result->fetch_assoc()): ?>
-                <option value="<?php echo $lecture['lecture_id']; ?>" <?php echo $lecture['lecture_id'] == $selected_lecture_id ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($lecture['lecture_name']); ?>
+        <input type="hidden" name="action" value="add">
+        <label for="lecture_id">Lecture:</label>
+        <select name="lecture_id" required>
+            <?php
+            $lectures = $conn->query("SELECT * FROM lectures");
+            while ($lecture = $lectures->fetch_assoc()): ?>
+                <option value="<?php echo $lecture['lecture_id']; ?>">
+                    <?php echo $lecture['lecture_name']; ?>
                 </option>
             <?php endwhile; ?>
         </select>
-
         <label for="question_text">Question Text:</label>
-        <textarea name="question_text" id="question_text" rows="4" required></textarea>
-
-        <label for="code_option">Code Option (Optional):</label>
-        <textarea name="code_option" id="code_option" rows="4"></textarea>
-
-        <button type="submit" name="add_question">Add Question</button>
+        <textarea name="question_text" required></textarea>
+        <label for="code_option">Code Option:</label>
+        <textarea name="code_option"></textarea>
+        <label>Options:</label>
+        <div id="options-container">
+            <div>
+                <input type="text" name="options[]" placeholder="Option Text" required>
+                <input type="checkbox" name="is_correct[]"> Correct
+            </div>
+        </div>
+        <button type="button" onclick="addOption()">Add Option</button>
+        <button type="submit">Add Question</button>
     </form>
+    <a href="lectures.php" style="display: inline-block; margin-top: 20px; padding: 10px 20px; border: 1px solid #007bff; border-radius: 4px; background-color: #f8f9fa; text-decoration: none; color: #007bff; transition: background-color 0.3s, color 0.3s;">Back to Home</a>
 
-    <?php if ($selected_lecture_id > 0): ?>
-        <table>
-            <thead>
+    <table>
+        <thead>
+            <tr>
+                <th>Question ID</th>
+                <th>Lecture</th>
+                <th>Question Text</th>
+                <th>Code Option</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php while ($row = $result->fetch_assoc()): ?>
                 <tr>
-                    <th>#</th>
-                    <th>Question</th>
-                    <th>Code Option</th>
-                    <th>Actions</th>
+                    <td><?php echo $row['question_id']; ?></td>
+                    <td><?php echo $row['lecture_name']; ?></td>
+                    <td><?php echo $row['question_text']; ?></td>
+                    <td><?php echo $row['code_option']; ?></td>
+                    <td>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="edit">
+                            <input type="hidden" name="question_id" value="<?php echo $row['question_id']; ?>">
+                            <input type="hidden" name="lecture_id" value="<?php echo $row['lecture_id']; ?>">
+                            <input type="hidden" name="question_text" value="<?php echo $row['question_text']; ?>">
+                            <input type="hidden" name="code_option" value="<?php echo $row['code_option']; ?>">
+                            <button type="submit">Edit</button>
+                        </form>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="question_id" value="<?php echo $row['question_id']; ?>">
+                            <button type="submit" onclick="return confirm('Are you sure you want to delete this question?');">Delete</button>
+                        </form>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                <?php if (count($questions) > 0): ?>
-                    <?php foreach ($questions as $index => $question): ?>
-                        <tr>
-                            <td><?php echo $index + 1; ?></td>
-                            <td><?php echo htmlspecialchars($question['question_text']); ?></td>
-                            <td><?php echo htmlspecialchars($question['code_option']); ?></td>
-                            <td>
-                                <a href="edit_question.php?question_id=<?php echo $question['question_id']; ?>&lecture_id=<?php echo $selected_lecture_id; ?>">Edit</a>
-                                <a href="manage_questions.php?delete_question_id=<?php echo $question['question_id']; ?>&lecture_id=<?php echo $selected_lecture_id; ?>" onclick="return confirm('Are you sure you want to delete this question?');">Delete</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="4">No questions found for this lecture.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
+            <?php endwhile; ?>
+        </tbody>
+    </table>
+
+    <script>
+        function addOption() {
+            const container = document.getElementById('options-container');
+            const optionDiv = document.createElement('div');
+            optionDiv.innerHTML = `
+                <input type="text" name="options[]" placeholder="Option Text" required>
+                <input type="checkbox" name="is_correct[]"> Correct
+            `;
+            container.appendChild(optionDiv);
+        }
+    </script>
 </body>
 </html>

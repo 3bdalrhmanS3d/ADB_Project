@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     session_start();
     $_SESSION['user_id'] = $user_id;
+    $_SESSION['user_name'] = $user_name;
 
     header("Location: lectures.php");
     exit();
